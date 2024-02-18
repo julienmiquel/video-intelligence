@@ -16,6 +16,10 @@ resource "google_storage_bucket_object" "object" {
   name   = "vi-function-source.zip"
   bucket = google_storage_bucket.gcf_source_vi.name
   source = data.archive_file.source_vi.output_path # Add path to the zipped function source code
+  
+  depends_on = [
+    module.project_services,
+  ]
 }  
 
 
@@ -33,7 +37,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
         object = google_storage_bucket_object.object.name
       }
     }
-    
+  
   }
   
 
@@ -68,5 +72,9 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
     }
 
   }
+
+  depends_on = [
+    module.project_services,
+  ]
 }
 
