@@ -15,15 +15,11 @@
 variable "project_id" {
   type        = string
   description = "Project ID"
-  default = "customer-demo-01"
+  default = "media-414316"
 }
 variable "region" {
   type        = string
   description = "GCP Region"
   default     = "europe-west1"
 }
-variable "wf_region" {
-  type        = string
-  description = "Cloud Workflows Region (choose a supported region: https://cloud.google.com/workflows/docs/locations)"
-  default     = "europe-west1"
-}
+

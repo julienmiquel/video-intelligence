@@ -51,15 +51,15 @@ output "function_uri" {
   value = google_cloudfunctions2_function.video_intelligence_function.service_config[0].uri
 }
 
-output "video_bq_connection" {
-  value       = google_bigquery_connection.connection.connection_id
-  description = "BQ connection id"
-}
+# output "video_bq_connection" {
+#   value       = google_bigquery_connection.connection.connection_id
+#   description = "BQ connection id"
+# }
 
-output "video_bq_dataset" {
-  value       = google_bigquery_dataset.video_analytics.dataset_id
-  description = "BQ dataset id"
-}
+# output "video_bq_dataset" {
+#   value       = google_bigquery_dataset.video_analytics.dataset_id
+#   description = "BQ dataset id"
+# }
 
 # output "workflow_name" {
 #   value       = google_workflows_workflow.video_intelligence.name
