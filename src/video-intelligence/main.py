@@ -11,7 +11,7 @@ video_client = videointelligence.VideoIntelligenceServiceClient()
 REGION  = os.environ.get("REGION", "us-central1")
 PROJECT_ID= os.environ.get("PROJECT_ID", "")
 OUTPUT_BUCKET  = os.environ.get("OUTPUT_BUCKET", "video-working-bucket-2f60")
-SPLIT_BY_FEATURES  = os.environ.get("SPLIT_BY_FEATURES", "0")
+SPLIT_BY_FEATURES  = os.environ.get("SPLIT_BY_FEATURES", "1")
 
 INPUT_BUCKET  = os.environ.get("INPUT_BUCKET", "")
 WORKING_BUCKET  = os.environ.get("WORKING_BUCKET", "")
@@ -86,10 +86,6 @@ def process_event(cloud_event):
         input_uri =  "gs://" + bucket + "/" + name
         
         file_system = name.split(".")[0].split("/")[-1]
-        #directory = name.split("/")[-2]
-
-
-        
         
         language_code="en-US"
         #if the input_uri contain "en-US" set the language_code variable to "en-US"
@@ -138,14 +134,19 @@ def process_event(cloud_event):
             annotate_video(input_uri, file_system, language_code)
         
 
-    else:
+    elif contentType == "application/octet-stream" or contentType == "text/json" :
+        print("Processing json file: ", name)
+        read_json_from_gcs(bucket, name)
+
+
+    else :
         print("Unsupported file type: ", contentType)
 
     print("end.") 
 
 def annotate_video(input_uri, file_system, language_code):
     
-    output_uri = f"gs://{OUTPUT_BUCKET}/{language_code}/{file_system} - {time.time()}.json"
+    output_uri = f"gs://{WORKING_BUCKET}/{language_code}/{file_system} - {time.time()}.json"
         
     print(f"input_uri = {input_uri} - output_uri = {output_uri} file_sytem = {file_system}")
 
@@ -200,7 +201,7 @@ def annotate_video_split_by_features(input_uri, file_system, language_code):
     for feature in features:
         print(featureId(feature))
 
-        output_uri = f"gs://{OUTPUT_BUCKET}/{language_code}/{featureId(feature)}/{file_system} - {time.time()}.json"
+        output_uri = f"gs://{WORKING_BUCKET}/{language_code}/{featureId(feature)}/{file_system} - {time.time()}.json"
             
         print(f"input_uri = {input_uri} - output_uri = {output_uri} file_sytem = {file_system}")
 
