@@ -12,26 +12,26 @@
 # # See the License for the specific language governing permissions and
 # # limitations under the License.
 
-resource "google_bigquery_dataset" "video_analytics" {
-  dataset_id    = "video_analytics${local.app_suffix_underscore}"
-  friendly_name = "video analytics Dataset"
-  description   = "This dataset contains data related to the video application"
-  location      = var.region
+# resource "google_bigquery_dataset" "video_analytics" {
+#   dataset_id    = "video_analytics${local.app_suffix_underscore}"
+#   friendly_name = "video analytics Dataset"
+#   description   = "This dataset contains data related to the video application"
+#   location      = var.region
 
-  depends_on = [
-    module.project_services,
-  ]
-}
+#   depends_on = [
+#     module.project_services,
+#   ]
+# }
 
-resource "google_bigquery_connection" "connection" {
-   connection_id = "gcp-cloud-ai-connection"
-   location      = var.region
-   friendly_name = "ai-connection"
-   description   = "access to cloud ai services"
+# resource "google_bigquery_connection" "connection" {
+#    connection_id = "gcp-cloud-ai-connection"
+#    location      = var.region
+#    friendly_name = "ai-connection"
+#    description   = "access to cloud ai services"
 
-   cloud_resource {}
+#    cloud_resource {}
 
-}
+# }
 
 
 
@@ -87,14 +87,14 @@ resource "google_bigquery_connection" "connection" {
 # }
 
 
-resource "google_bigquery_job" "job" {
-  job_id     = "job_query" 
-  project    = var.project_id
-  location   = var.region
+# resource "google_bigquery_job" "job" {
+#   job_id     = "job_query" 
+#   project    = var.project_id
+#   location   = var.region
 
-  query {
-  query = " CREATE OR REPLACE EXTERNAL TABLE `customer-demo-01.video_analytics_2f60.files` WITH CONNECTION `customer-demo-01.europe-west1.gcp-cloud-ai-connection`  OPTIONS (    object_metadata='DIRECTORY',    uris = ['gs://video-output-bucket-2f60/*'],    max_staleness=INTERVAL 24 HOUR   , metadata_cache_mode='MANUAL'        ); "
+#   query {
+#   query = " CREATE OR REPLACE EXTERNAL TABLE `customer-demo-01.video_analytics_2f60.files` WITH CONNECTION `customer-demo-01.europe-west1.gcp-cloud-ai-connection`  OPTIONS (    object_metadata='DIRECTORY',    uris = ['gs://video-output-bucket-2f60/*'],    max_staleness=INTERVAL 24 HOUR   , metadata_cache_mode='MANUAL'        ); "
 
     
-  }
-}
+#   }
+# }
