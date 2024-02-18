@@ -20,6 +20,7 @@ module "project_services" {
 
   activate_apis = [
     "run.googleapis.com",
+    "cloudbuild.googleapis.com",
     "cloudfunctions.googleapis.com",
     "videointelligence.googleapis.com",
     # "bigquery.googleapis.com",
