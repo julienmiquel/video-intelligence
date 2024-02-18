@@ -44,7 +44,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
  service_config {
     max_instance_count = 3
     available_memory   = "512M"
-    timeout_seconds    = 600
+    timeout_seconds    = 500
 
     ingress_settings = "ALLOW_INTERNAL_ONLY"
     service_account_email = google_service_account.video_trigger.email
@@ -101,7 +101,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" 
  service_config {
     max_instance_count = 3
     available_memory   = "512M"
-    timeout_seconds    = 600
+    timeout_seconds    = 500
 
     ingress_settings = "ALLOW_INTERNAL_ONLY"
     service_account_email = google_service_account.video_trigger.email
