@@ -80,7 +80,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
 
 
 
-resource "google_cloudfunctions2_function" "video_intelligence_function" {
+resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" {
   name        = "video_intelligence_processing_json_results"
   location    = var.region
   description = "video intelligence cloud function json processing"
