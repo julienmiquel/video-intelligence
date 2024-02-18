@@ -8,10 +8,13 @@ from google.cloud import videointelligence
  
 video_client = videointelligence.VideoIntelligenceServiceClient()
  
-LOCATION  = os.environ.get("REGION", "us-central1")
+REGION  = os.environ.get("REGION", "us-central1")
 PROJECT_ID= os.environ.get("PROJECT_ID", "")
 OUTPUT_BUCKET  = os.environ.get("OUTPUT_BUCKET", "video-working-bucket-2f60")
 SPLIT_BY_FEATURES  = os.environ.get("SPLIT_BY_FEATURES", "0")
+
+INPUT_BUCKET  = os.environ.get("INPUT_BUCKET", "")
+WORKING_BUCKET  = os.environ.get("WORKING_BUCKET", "")
 
 
 features = [
@@ -293,7 +296,7 @@ from moviepy.editor import VideoFileClip
 from google.cloud import videointelligence_v1 as vi
 import vertexai
 
-vertexai.init(project=PROJECT_ID, location=LOCATION)
+vertexai.init(project=PROJECT_ID, location=REGION)
 
 def content_moderation(text):
     from vertexai.language_models import TextGenerationModel
