@@ -1,4 +1,6 @@
 
+
+
 resource "google_storage_bucket" "gcf_source_vi" {
   name                        = "${var.suffix}-gcf-source" # Every bucket name must be globally unique
   location                    = var.region
