@@ -9,7 +9,7 @@ from google.cloud import videointelligence
 video_client = videointelligence.VideoIntelligenceServiceClient()
  
 LOCATION  = os.environ.get("REGION", "us-central1")
-PROJECT_ID= os.environ.get("REGION", "us-central1")
+PROJECT_ID= os.environ.get("PROJECT_ID", "")
 OUTPUT_BUCKET  = os.environ.get("OUTPUT_BUCKET", "video-working-bucket-2f60")
 SPLIT_BY_FEATURES  = os.environ.get("SPLIT_BY_FEATURES", "0")
 
@@ -328,7 +328,7 @@ import vertexai.preview.generative_models as generative_models
 
 def content_moderation_gemini(video_input : Part):
     model_vision = GenerativeModel("gemini-pro-vision")
-    
+
     responses = model_vision.generate_content(
     ["""You are an expert in content moderation. 
 Explain evidence with the CSA rule and without offensive quote.
