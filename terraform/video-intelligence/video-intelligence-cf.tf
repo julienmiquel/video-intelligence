@@ -24,7 +24,7 @@ resource "google_storage_bucket_object" "object" {
 
 
 resource "google_cloudfunctions2_function" "video_intelligence_function" {
-  name        = "video_intelligence_processing_v0"
+  name        = "video_intelligence_processing_videos"
   location    = var.region
   description = "video intelligence cloud function V2"
 
@@ -83,7 +83,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
 resource "google_cloudfunctions2_function" "video_intelligence_function" {
   name        = "video_intelligence_processing_json_results"
   location    = var.region
-  description = "video intelligence cloud function V2"
+  description = "video intelligence cloud function json processing"
 
   build_config {
     runtime     = "python310"
