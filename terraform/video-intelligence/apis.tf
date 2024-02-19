@@ -19,6 +19,7 @@ module "project_services" {
   project_id = var.project_id
 
   activate_apis = [
+    "cloudresourcemanager.googleapis.com",
     "run.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudfunctions.googleapis.com",
