@@ -7,6 +7,7 @@ import os
 
 from google.cloud import videointelligence
 import gcs as gcs 
+import videoedit as videoedit
 
 video_client = videointelligence.VideoIntelligenceServiceClient()
  
@@ -146,24 +147,26 @@ def process_event(cloud_event):
         content_moderation_text_based = None
         texts = None
         for annotation_result in annotation.annotation_results:
-
-            bucketname, blobname = gcs.split_gcs_uri(annotation_result.input_uri)
+            print(f"Finished processing input: {annotation_result.input_uri}" ) 
+            uri  = "gs:/"+annotation_result.input_uri
+            print(f"usir = {uri}")
+            bucketname, blobname = gcs.split_gcs_uri(uri)
             video_input = gcs.store_temp_video_from_gcs(bucketname, blobname)
-            for input_part in split_video_shots(video_input,annotation_result ):
+            for input_part in videoedit.split_video_shots(video_input,annotation_result ):
                 
-                file_name = f"/chunk/{input_part}"
+                file_name = f"chunk{input_part}"
 
-                uri =gcs.write_file_to_gcs(input_part,WORKING_BUCKET, file_name)
+                uri =gcs.write_file_to_gcs(OUTPUT_BUCKET, file_name, input_part)
                 
 
                 res = content_moderation_gemini(uri)
                 print(res)
-                gcs.write_text_to_gcs(WORKING_BUCKET, file_name.replace(".mp4", ".json"), res, "text/json")
+                gcs.write_text_to_gcs(OUTPUT_BUCKET, file_name.replace(".mp4", ".json"), res, "text/json")
 
                 # with io.open(input_part.replace(".mp4", ".json"), 'w') as f:
                 #     f.write(res)
             
-        texts = get_video_text(annotation_result)
+        texts = videoedit.get_video_text(annotation_result)
 
         unique_array = list(set(texts))
         text = ', '.join(unique_array)
@@ -286,15 +289,12 @@ def annotate_video_split_by_features(input_uri, file_system, language_code):
 
 
 
-from datetime import timedelta
-from typing import Optional, Sequence, cast
 
-import base64
+
 import vertexai
 from vertexai.preview.generative_models import GenerativeModel, Part
 import vertexai.preview.generative_models as generative_models
 
-from moviepy.editor import VideoFileClip
 from google.cloud import videointelligence_v1 as vi
 import vertexai
 
@@ -382,127 +382,3 @@ Evaluate CSA rules based on this video part and output them in JSON."""
     return "".join(answer)
 
 
-
-def get_video_text(results: vi.VideoAnnotationResults, min_frames: int = 15):
-    annotations = results.text_annotations
-
-    allText = []
-
-    print(" Detected text ".center(80, "-"))
-    for annotation in annotations:
-        for text_segment in annotation.segments:
-            frames = len(text_segment.frames)
-            # if frames < min_frames:
-            #     continue
-            text = annotation.text
-            allText.append(text)
-            confidence = text_segment.confidence
-            start = text_segment.segment.start_time_offset
-            seconds = segment_seconds(text_segment.segment)
-            print(text)
-            print(f"  {confidence:4.0%} | {start} + {seconds:.1f}s | {frames} fr.")
-    return allText
-
-def print_video_text(results: vi.VideoAnnotationResults, min_frames: int = 15):
-    annotations = sorted_by_first_segment_end(results.text_annotations)
-
-    print(" Detected text ".center(80, "-"))
-    for annotation in annotations:
-        for text_segment in annotation.segments:
-            frames = len(text_segment.frames)
-            if frames < min_frames:
-                continue
-            text = annotation.text
-            confidence = text_segment.confidence
-            start = text_segment.segment.start_time_offset
-            seconds = segment_seconds(text_segment.segment)
-            print(text)
-            print(f"  {confidence:4.0%} | {start} + {seconds:.1f}s | {frames} fr.")
-
-
-def sorted_by_first_segment_end(
-    annotations: Sequence[vi.TextAnnotation],
-) -> Sequence[vi.TextAnnotation]:
-    def first_segment_end(annotation: vi.TextAnnotation) -> int:
-        return annotation.segments[0].segment.end_time_offset.total_seconds()
-
-    return sorted(annotations, key=first_segment_end)
-
-
-def segment_seconds(segment: vi.VideoSegment) -> float:
-    t1 = segment.start_time_offset.total_seconds()
-    t2 = segment.end_time_offset.total_seconds()
-    return t2 - t1
-
-def split_video(input_video, output_video, start : int, end: int):
-
-    clip = VideoFileClip(input_video).subclip(start,end)
-    clip.write_videofile(output_video)
-
-def split_video_shots(input_video, results: vi.VideoAnnotationResults):
-    shots = results.shot_annotations
-    print(f" Video shots: {len(shots)} ".center(40, "-"))
-    for i, shot in enumerate(shots):
-        t1 = shot.start_time_offset.total_seconds()
-        t2 = shot.end_time_offset.total_seconds()
-        print(f"{i+1:>3} | {t1:7.3f} | {t2:7.3f}")
-        output_video = f"{input_video } - {i} - {t1} - {t2}.mp4"
-        
-        split_video(input_video=input_video, output_video=output_video, start=t1, end=t2)
-        yield output_video
-        
-
-
-
-def print_frames(results: vi.VideoAnnotationResults, likelihood: vi.Likelihood):
-    frames = results.explicit_annotation.frames
-    frames = [f for f in frames if f.pornography_likelihood == likelihood]
-
-    print(f" {likelihood.name} frames: {len(frames)} ".center(40, "-"))
-    for frame in frames:
-        print(frame.time_offset)
-        
-def print_video_shots(results: vi.VideoAnnotationResults):
-    shots = results.shot_annotations
-    print(f" Video shots: {len(shots)} ".center(40, "-"))
-    for i, shot in enumerate(shots):
-        t1 = shot.start_time_offset.total_seconds()
-        t2 = shot.end_time_offset.total_seconds()
-        print(f"{i+1:>3} | {t1:7.3f} | {t2:7.3f}")
-        
-
-        
-def print_video_labels(results: vi.VideoAnnotationResults):
-    labels = sorted_by_first_segment_confidence(results.segment_label_annotations)
-
-    print(f" Video labels: {len(labels)} ".center(80, "-"))
-    for label in labels:
-        categories = category_entities_to_str(label.category_entities)
-        for segment in label.segments:
-            confidence = segment.confidence
-            t1 = segment.segment.start_time_offset.total_seconds()
-            t2 = segment.segment.end_time_offset.total_seconds()
-            print(
-                f"{confidence:4.0%}",
-                f"{t1:7.3f}",
-                f"{t2:7.3f}",
-                f"{label.entity.description}{categories}",
-                sep=" | ",
-            )
-
-
-def sorted_by_first_segment_confidence(
-    labels: Sequence[vi.LabelAnnotation],
-) -> Sequence[vi.LabelAnnotation]:
-    def first_segment_confidence(label: vi.LabelAnnotation) -> float:
-        return label.segments[0].confidence
-
-    return sorted(labels, key=first_segment_confidence, reverse=True)
-
-
-def category_entities_to_str(category_entities: Sequence[vi.Entity]) -> str:
-    if not category_entities:
-        return ""
-    entities = ", ".join([e.description for e in category_entities])
-    return f" ({entities})"
-    

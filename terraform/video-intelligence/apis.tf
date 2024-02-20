@@ -19,6 +19,13 @@ module "project_services" {
   project_id = var.project_id
 
   activate_apis = [
+    "notebooks.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "dataform.googleapis.com",
+    "dataflow.googleapis.com",
+    "storage-component.googleapis.com",
+    "visionai.googleapis.com",
+    "aiplatform.googleapis.com",
     "iam.googleapis.com",
     "serviceusage.googleapis.com",
     "cloudresourcemanager.googleapis.com",
