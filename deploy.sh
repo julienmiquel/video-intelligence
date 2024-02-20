@@ -1,2 +1,5 @@
+project_id=$(gcloud config get project)
+echo $project_id
+
 terraform -chdir=terraform init
-terraform -chdir=terraform apply -auto-approve
+terraform -chdir=terraform apply -auto-approve -var project_id=$project_id

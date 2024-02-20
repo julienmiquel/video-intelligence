@@ -19,12 +19,14 @@ module "project_services" {
   project_id = var.project_id
 
   activate_apis = [
+    "iam.googleapis.com",
+    "serviceusage.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "run.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudfunctions.googleapis.com",
     "videointelligence.googleapis.com",
-    # "bigquery.googleapis.com",
+    "bigquery.googleapis.com",
     # "dlp.googleapis.com",
     # "workflows.googleapis.com",
     "eventarc.googleapis.com",

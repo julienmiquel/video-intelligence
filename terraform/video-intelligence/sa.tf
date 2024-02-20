@@ -13,7 +13,7 @@
 # limitations under the License.
 
 resource "google_service_account" "video_trigger" {
-  account_id   = "video-trigger-sa${local.app_suffix}"
+  account_id   = "video-processing-trigger-sa${local.app_suffix}"
   display_name = "SA for video Trigger"
 }
 

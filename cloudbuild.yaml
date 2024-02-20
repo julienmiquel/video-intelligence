@@ -1,0 +1,10 @@
+steps:
+  - name: 'hashicorp/terraform:1.0.0'
+    id: terraform -chdir=terraform init
+    script: terraform -chdir=terraform init
+  - name: 'hashicorp/terraform:1.0.0'
+    id: terraform -chdir=terraform  plan
+    script: terraform -chdir=terraform  plan
+  - name: 'hashicorp/terraform:1.0.0'
+    id: terraform -chdir=terraform apply
+    script: terraform -chdir=terraform  apply --auto-approve
