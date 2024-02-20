@@ -1,3 +1,4 @@
+import io
 import functions_framework
 
 
@@ -5,7 +6,8 @@ import time
 import os
 
 from google.cloud import videointelligence
- 
+import gcs as gcs 
+
 video_client = videointelligence.VideoIntelligenceServiceClient()
  
 REGION  = os.environ.get("REGION", "us-central1")
@@ -136,8 +138,37 @@ def process_event(cloud_event):
 
     elif contentType == "application/octet-stream" or contentType == "text/json" :
         print("Processing json file: ", name)
-        read_json_from_gcs(bucket, name)
+        data = gcs.read_json_from_gcs(bucket, name)
 
+        from google.cloud import videointelligence_v1 as vi
+        annotation = vi.AnnotateVideoResponse(data)
+        
+        content_moderation_text_based = None
+        texts = None
+        for annotation_result in annotation.annotation_results:
+
+            bucketname, blobname = gcs.split_gcs_uri(annotation_result.input_uri)
+            video_input = gcs.store_temp_video_from_gcs(bucketname, blobname)
+            for input_part in split_video_shots(video_input,annotation_result ):
+                
+                file_name = f"/chunk/{input_part}"
+
+                uri =gcs.write_file_to_gcs(input_part,WORKING_BUCKET, file_name)
+                
+
+                res = content_moderation_gemini(uri)
+                print(res)
+                gcs.write_text_to_gcs(WORKING_BUCKET, file_name.replace(".mp4", ".json"), res, "text/json")
+
+                # with io.open(input_part.replace(".mp4", ".json"), 'w') as f:
+                #     f.write(res)
+            
+        texts = get_video_text(annotation_result)
+
+        unique_array = list(set(texts))
+        text = ', '.join(unique_array)
+        print(text)
+        content_moderation_text_based = content_moderation(text)
 
     else :
         print("Unsupported file type: ", contentType)
@@ -251,38 +282,8 @@ def annotate_video_split_by_features(input_uri, file_system, language_code):
     print("finished processing.")       
 
 
-    
-import json
-import pandas as pd
-from google.cloud import storage
 
-def read_json_from_gcs(bucket_name, file_name):
-    """Reads a JSON file from a Google Cloud Storage bucket.
 
-    Args:
-        bucket_name (str): The name of the bucket containing the file.
-        file_name (str): The name of the JSON file to read.
-
-    Returns:
-        dict: The parsed JSON data, or None if an error occurs.
-    """
-
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(file_name)
-
-    try:
-        contents = blob.download_as_string()
-        data = json.loads(contents)
-        df = pd.json_normalize(data)
-        data_json = df.to_json( orient="records")
-        #data_str = data_json.dumps(orient="records")
-        bucket.blob(file_name + "_flattened.json").upload_from_string(data_json, 'text/json')
-
-        return data
-    except Exception as e:
-        print(f"Error reading JSON file: {e}")
-        return None
 
 
 from datetime import timedelta
@@ -448,6 +449,7 @@ def split_video_shots(input_video, results: vi.VideoAnnotationResults):
         output_video = f"{input_video } - {i} - {t1} - {t2}.mp4"
         
         split_video(input_video=input_video, output_video=output_video, start=t1, end=t2)
+        yield output_video
         
 
 
