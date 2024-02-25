@@ -99,8 +99,9 @@ resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" 
   
 
  service_config {
+    available_cpu = "4"
     max_instance_count = 3
-    available_memory   = "512M"
+    available_memory   = "2Gi"
     timeout_seconds    = 500
 
     ingress_settings = "ALLOW_INTERNAL_ONLY"
@@ -134,3 +135,63 @@ resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" 
     module.project_services,
   ]
 }
+
+
+
+
+resource "google_cloudfunctions2_function" "gemini_classification" {
+  name        = "video_intelligence_processing_gemini_classification"
+  location    = var.region
+  description = "classify video using gemini"
+
+  build_config {
+    runtime     = "python310"
+    entry_point = "classify_video_with_gemini_event" # Set the entry point
+    source {
+      storage_source {
+        bucket = google_storage_bucket.gcf_source_vi.name
+        object = google_storage_bucket_object.object.name
+      }
+    }
+  
+  }
+  
+
+ service_config {
+    available_cpu = "1"
+    max_instance_count = 3
+    available_memory   = "512M"
+    timeout_seconds    = 500
+
+    ingress_settings = "ALLOW_INTERNAL_ONLY"
+    service_account_email = google_service_account.video_trigger.email
+
+    environment_variables = {
+        OUTPUT_BUCKET = google_storage_bucket.video_output_bucket.name
+        INPUT_BUCKET = google_storage_bucket.video_input_bucket.name
+        WORKING_BUCKET = google_storage_bucket.working_bucket.name
+        PROJECT_ID = var.project_id
+        REGION = var.region
+    }
+
+  }
+
+ event_trigger {
+      event_type     = "google.cloud.storage.object.v1.finalized"
+      trigger_region = var.region
+      retry_policy   = "RETRY_POLICY_DO_NOT_RETRY"
+      service_account_email = google_service_account.video_trigger.email
+
+      event_filters {
+        attribute = "bucket"
+        value     = google_storage_bucket.video_output_bucket.name
+        
+    }
+
+  }
+
+  depends_on = [
+    module.project_services,
+  ]
+}
+

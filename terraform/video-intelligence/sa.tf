@@ -37,6 +37,20 @@ resource "google_project_iam_member" "video_trigger_run_invoker" {
 }
 
 
+resource "google_project_iam_member" "video_trigger_ai_sa_ml_service_agent" {
+  project = var.project_id
+  role    = "roles/ml.serviceAgent"
+  member  = "serviceAccount:${google_service_account.video_trigger.email}"
+}
+
+
+resource "google_project_iam_member" "video_trigger_ai_sa_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.video_trigger.email}"
+}
+
+
 
 # GCP creates a special SA for GCS that needs to be granted pub/sub permissions
 # ref: https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/storage_project_service_account
@@ -59,3 +73,17 @@ resource "google_project_iam_member" "pubsub_sa_token_creator" {
   role    = "roles/iam.serviceAccountTokenCreator"
   member  = "serviceAccount:${local.pubsub_default_sa_email}"
 }
+
+resource "google_project_iam_member" "ai_sa_ml_service_agent" {
+  project = var.project_id
+  role    = "roles/ml.serviceAgent"
+  member  = "serviceAccount:${local.pubsub_default_sa_email}"
+}
+
+
+resource "google_project_iam_member" "ai_sa_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${local.pubsub_default_sa_email}"
+}
+

@@ -1,4 +1,5 @@
 import io
+import json
 import functions_framework
 
 
@@ -8,6 +9,7 @@ import os
 from google.cloud import videointelligence
 import gcs as gcs 
 import videoedit as videoedit
+import pandas as pd
 
 video_client = videointelligence.VideoIntelligenceServiceClient()
  
@@ -18,7 +20,7 @@ SPLIT_BY_FEATURES  = os.environ.get("SPLIT_BY_FEATURES", "1")
 
 INPUT_BUCKET  = os.environ.get("INPUT_BUCKET", "")
 WORKING_BUCKET  = os.environ.get("WORKING_BUCKET", "")
-
+TAG_TO_ANALYZE = "CSA"
 
 features = [
     videointelligence.Feature.OBJECT_TRACKING,
@@ -59,6 +61,84 @@ def featureId(feature):
 def main(cloud_event):
     process_event(cloud_event)
     
+
+# Triggered by a change in a storage bucket
+@functions_framework.cloud_event
+def classify_video_with_gemini_event(cloud_event):
+    data = cloud_event.data
+
+    event_id = cloud_event["id"]
+    event_type = cloud_event["type"]
+
+    bucket = data["bucket"]    
+    name = data["name"]
+    metageneration = data["metageneration"]
+    timeCreated = data["timeCreated"]
+    updated = data["updated"]
+    contentType = data["contentType"]
+
+
+    print(f"Event ID: {event_id}")
+    print(f"Event type: {event_type}")
+    print(f"Bucket: {bucket}")
+    print(f"File: {name}")
+    print(f"Metageneration: {metageneration}")
+    print(f"Created: {timeCreated}")
+    print(f"Updated: {updated}")
+
+    if contentType == "video/mp4" :
+        print(f"Processing video file with gemini: {name}")
+
+        uri = "gs://" + bucket + "/" + name
+        moderate_video(uri, name)
+
+import json
+import os
+import pandas as pd
+
+def flatten_json(data):
+    
+    # Extract the CSA rules into a separate dictionary
+    csa_rules = data['csa_rules']
+
+    # Update the original data, removing inner 'csa_rules' and adding individual rules
+    data.update(csa_rules)
+    del data['csa_rules']  
+
+    # Create a DataFrame from the modified data
+    df = pd.DataFrame([data])
+
+    return df
+
+def moderate_video(uri, name):
+    try:
+        res = content_moderation_gemini(uri)
+        print(f"moderation content done on chunck uri {uri} with res = {res}")
+        print(res)
+        print("save json result in output bucket")
+        json_file_path = gcs.write_text_to_gcs(OUTPUT_BUCKET, name.replace(".mp4", ".json"), res, "text/json")
+        print(f"json_file_path = {json_file_path}")
+
+        dict= json.loads(res)
+        df2 = flatten_json(dict)
+
+        print("read tags from source uri")
+        tags = gcs.read_tags_from_gcs(uri)
+        print(f"uri= {uri} - tags = {tags}")
+        
+        df1 = flatten_json(dict)
+        df3 = pd.concat([df1, df2], axis=0)
+        
+        import bq as bq
+        table_id = "media.results"
+
+        bq.save_bq(df3,table_id, project_id=PROJECT_ID )
+    except Exception as e:
+        print(f"ERROR in content_moderation(uri) = {uri}")
+        print(e)
+
+
+
 # Triggered by a change in a storage bucket
 @functions_framework.cloud_event
 def process_event(cloud_event):
@@ -83,7 +163,37 @@ def process_event(cloud_event):
     print(f"Created: {timeCreated}")
     print(f"Updated: {updated}")
 
-    if contentType == "video/mp4" :
+    if contentType == "video/mp4" and TAG_TO_ANALYZE in name:
+        print(f"Processing video file with gemini: {name}")
+
+        uri = "gs://" + bucket + "/" + name
+
+        try:
+            print("read tags from source uri")
+            tags = gcs.read_tags_from_gcs(uri)
+            print(f"uri= {uri} - tags = {tags}")
+        
+            res = content_moderation_gemini(uri)
+            print(f"moderation content done on chunck uri {uri} with res = {res}")
+            print(res)
+            json_data = json.loads(res)
+            json_data["uri"] = video_input
+            json_data["tags"] =tags
+            
+            res = json.dumps(json_data, indent=4)
+            print(res)
+
+            
+
+            print("save json result in output bucket")
+            json_file_path = gcs.write_text_to_gcs(OUTPUT_BUCKET, name.replace(".mp4", ".json"), res, "text/json")
+            print(f"json_file_path = {json_file_path}")
+
+        except Exception as e:
+            print(f"ERROR in content_moderation(uri) = {uri}")
+            print(e)
+
+    elif contentType == "video/mp4" and ".mp4" in name:
 
 
         input_uri =  "gs://" + bucket + "/" + name
@@ -137,7 +247,7 @@ def process_event(cloud_event):
             annotate_video(input_uri, file_system, language_code)
         
 
-    elif contentType == "application/octet-stream" or contentType == "text/json" :
+    elif contentType == "application/octet-stream" or contentType == "text/json"  or contentType == "application/json":
         print("Processing json file: ", name)
         data = gcs.read_json_from_gcs(bucket, name)
 
@@ -146,32 +256,75 @@ def process_event(cloud_event):
         
         content_moderation_text_based = None
         texts = None
+        index = 0
         for annotation_result in annotation.annotation_results:
+            # ex: input_bucket     "input_uri": "/video-input-bucket-2f60/fr-FR/cdanslair.mp4",
+
             print(f"Finished processing input: {annotation_result.input_uri}" ) 
             uri  = "gs:/"+annotation_result.input_uri
-            print(f"usir = {uri}")
-            bucketname, blobname = gcs.split_gcs_uri(uri)
-            video_input = gcs.store_temp_video_from_gcs(bucketname, blobname)
-            for input_part in videoedit.split_video_shots(video_input,annotation_result ):
-                
-                file_name = f"chunk{input_part}"
+            
+            print(f"full uri = {uri}")
+            # gs://video-input-bucket-2f60/fr-FR/cdanslair.mp4
 
-                uri =gcs.write_file_to_gcs(OUTPUT_BUCKET, file_name, input_part)
-                
+            bucketname, video_blobname = gcs.split_gcs_uri(uri)
+            print(f"bucketname = {bucketname} - blobname = {video_blobname}")
+            # video-input-bucket-2f60  /fr-FR/cdanslair.mp4
+            localfile = video_blobname.replace("/", "_") # -{index}
+            print(f"localfile = {localfile}")
+            # fr-FR_cdanslair.mp4
 
-                res = content_moderation_gemini(uri)
-                print(res)
-                gcs.write_text_to_gcs(OUTPUT_BUCKET, file_name.replace(".mp4", ".json"), res, "text/json")
+            video_input = gcs.store_temp_video_from_gcs(bucketname, video_blobname, localfile= localfile)
+            
+            print(f"video_input = {video_input}")
+
+            for input_part, t1,t2 in videoedit.split_video_shots(video_input,annotation_result ):
+                print(f"split_video_shots input_part = {input_part}")
+                index = index + 1
+                # remove file extention
+                #video_blobname = os.path.splitext(video_blobname)[0]
+
+                gcs_file_name = f"{TAG_TO_ANALYZE}/{video_blobname}/chunks - {index} - {t1} - {t2}.mp4"
+                print(f"write in output bucket chunck file gcs_file_name = {gcs_file_name}")
+                tags = {
+                    "video_source": uri,                    
+                    "video_blobname": video_blobname,
+                    "index": index,
+                    "time_start": t1,
+                    "time_stop": t2                    
+                }
+
+                # write in output bucket chunck file                
+                blob = gcs.write_file_to_gcs(OUTPUT_BUCKET, 
+                                             gcs_file_name=gcs_file_name, 
+                                             local_file_path=input_part, 
+                                             tags=tags)
+                
+                chunck_uri=  f"gs://{OUTPUT_BUCKET}/{blob.name}"
+
+                print(80*"*" + f" CHUNK URI {chunck_uri}" + 80*"*")
+                print(f"VIDEO chunck uri = {chunck_uri}")
+
+                # try:
+                #     res = content_moderation_gemini(chunck_uri)
+                #     print(f"moderation content done on chunck uri {chunck_uri} with res = {res}")
+                #     print(res)
+                #     print("save json result in output bucket")
+                #     json_file_path = gcs.write_text_to_gcs(OUTPUT_BUCKET, gcs_file_name.replace(".mp4", ".json"), res, "text/json")
+                #     print(f"json_file_path = {json_file_path}")
+
+                # except Exception as e:
+                #     print(f"ERROR in content_moderation(uri) = {uri}")
+                #     print(e)
 
                 # with io.open(input_part.replace(".mp4", ".json"), 'w') as f:
                 #     f.write(res)
             
-        texts = videoedit.get_video_text(annotation_result)
+        #texts = videoedit.get_video_text(annotation_result)
 
-        unique_array = list(set(texts))
-        text = ', '.join(unique_array)
-        print(text)
-        content_moderation_text_based = content_moderation(text)
+        # unique_array = list(set(texts))
+        # text = ', '.join(unique_array)
+        # print(text)
+        #content_moderation_text_based = content_moderation(text)
 
     else :
         print("Unsupported file type: ", contentType)
@@ -331,14 +484,60 @@ import vertexai.preview.generative_models as generative_models
 
 
 
-def content_moderation_gemini(video_input : Part):
-    model_vision = GenerativeModel("gemini-pro-vision")
+def content_moderation(text):
+    from vertexai.language_models import TextGenerationModel
 
-    responses = model_vision.generate_content(
+    parameters = {
+        "max_output_tokens": 8192,
+        "temperature": 0.1,
+        "top_p": 1,
+        "top_k": 40
+    }
+    model = TextGenerationModel.from_pretrained("text-bison-32k")
+    response = model.predict(
+        f"""You are an expert in content moderation. 
+You classify text with CSA rules. Answer short JSON results.
+TEXT:
+{text}
+
+JSON:
+    """,
+        **parameters
+    )
+    print(f"Response from Model: {response.text}")
+    
+    str_json = response.replace("json", "").replace("```", "")
+    print(str_json)
+    json_data = json.loads(str_json)
+    return json_data
+
+
+
+def content_moderation_gemini(video_input):
+    print(f"content_moderation_gemini {video_input}")
+    if type(video_input) == str:
+        #if video_input.startswith("gs://"):
+        video1 = Part.from_uri(uri=video_input, mime_type="video/mp4")
+        # else:
+        #     video1 = Part(video_input)
+    
+    elif type(input) == 'Part':
+        video1 = video_input
+    else:
+        print(f"input is not supported: {video_input}")
+        return 
+    
+
+    model = GenerativeModel("gemini-pro-vision")
+    responses = model.generate_content(
     ["""You are an expert in content moderation. 
-Explain evidence with the CSA rule and without offensive quote.
+Explain in detail why you provide the rating with the content moderation rule and without offensive quote.
 
-You classify text with CSA rules. Answer short JSON results like an API without quote with the following format:""", """{""", """\"csa_rules\": {
+You classify text with CSA rules. Answer short JSON results like an API without quote with the following format:""", 
+"""{""", 
+"""\"csa_rules\": {
+    \"description\": "description of action in the video",
+
     \"violence\": 0,
     \"violence_evidence\":  \"\",
 
@@ -351,13 +550,13 @@ You classify text with CSA rules. Answer short JSON results like an API without 
     \"drugs_and_alcohol\": 0,
     \"drugs_and_alcohol_evidence\":  \"\",
 
-    \"profanity\": 0
+    \"profanity\": 0,
     \"profanity_evidence\":  \"\",
   }
 }
 
 Evaluate CSA rules based on this video part and output them in JSON."""
-         , video_input],
+         , video1],
         generation_config={
             "max_output_tokens": 2048,
             "temperature": 0.1,
@@ -379,6 +578,9 @@ Evaluate CSA rules based on this video part and output them in JSON."""
         print(text, end="")    
         answer.append(text)
     
-    return "".join(answer)
-
+    str_json = "".join(answer)
+    str_json = str_json.replace("json", "").replace("```", "")
+    print(str_json)
+    
+    return str_json
 

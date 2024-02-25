@@ -64,8 +64,8 @@ def segment_seconds(segment: vi.VideoSegment) -> float:
 
 def split_video(input_video, output_video, start : int, end: int):
 
-    clip = VideoFileClip(input_video).subclip(start,end)
-    clip.write_videofile(output_video)
+    clip = VideoFileClip(input_video, verbose=True, audio=True).subclip(start,end)
+    clip.write_videofile(output_video, verbose=True)
 
 def split_video_shots(input_video, results: vi.VideoAnnotationResults):
     if results is None:
@@ -91,7 +91,8 @@ def split_video_shots(input_video, results: vi.VideoAnnotationResults):
         output_video = f"{input_video } - {i} - {t1} - {t2}.mp4"
         
         split_video(input_video=input_video, output_video=output_video, start=t1, end=t2)
-        yield output_video
+        yield output_video, t1, t2
+
 
 
 def print_frames(results: vi.VideoAnnotationResults, likelihood: vi.Likelihood):
