@@ -123,7 +123,9 @@ def moderate_video(uri, name):
         df2 = flatten_json(dict)
 
         print("read tags from source uri")
-        tags = gcs.read_tags_from_gcs(uri)
+        bucketname, video_blobname = gcs.split_gcs_uri(uri)
+
+        tags = gcs.read_tags_from_gcs(bucketname, video_blobname)
         print(f"uri= {uri} - tags = {tags}")
         
         df1 = flatten_json(dict)
@@ -170,7 +172,8 @@ def process_event(cloud_event):
 
         try:
             print("read tags from source uri")
-            tags = gcs.read_tags_from_gcs(uri)
+            bucketname, video_blobname = gcs.split_gcs_uri(uri)
+            tags = gcs.read_tags_from_gcs(bucketname, video_blobname)            
             print(f"uri= {uri} - tags = {tags}")
         
             res = content_moderation_gemini(uri)
