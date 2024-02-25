@@ -536,7 +536,7 @@ Explain in detail why you provide the rating with the content moderation rule an
 You classify text with CSA rules. Answer short JSON results like an API without quote with the following format:""", 
 """{""", 
 """\"csa_rules\": {
-    \"description\": "description of action in the video",
+    \"description\": \"description of action in the video\",
 
     \"violence\": 0,
     \"violence_evidence\":  \"\",
