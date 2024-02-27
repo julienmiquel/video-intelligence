@@ -20,7 +20,9 @@ def read_json_from_gcs(bucket_name, file_name):
 
     try:
         contents = blob.download_as_string()
+        
         data = json.loads(contents)
+        return data
         #df = pd.json_normalize(data)
         #data_json = df.to_json( orient="records")
         #data_str = data_json.dumps(orient="records")
@@ -31,17 +33,15 @@ def read_json_from_gcs(bucket_name, file_name):
         print(f"Error reading JSON file: {e}")
         return None
     
-def read_tags_from_gcs(bucket_name, file_name):
+def read_tags_from_gcs(bucket_name, blob_name):
 
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(file_name)
+    """Retrieves the metadata of a GCS blob."""
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    blob.reload()  # Ensure metadata is up-to-date
 
-    try:
-        return blob.metadata
-    except Exception as e:
-        print(f"Error reading metaData tags file: {e}")
-        return None    
+    return blob.metadata
 
 def write_text_to_gcs(bucket_name, file_name, text, mime_type="text/plain"):
     """Reads a JSON file from a Google Cloud Storage bucket.

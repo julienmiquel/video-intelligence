@@ -67,24 +67,18 @@ def split_video(input_video, output_video, start : int, end: int):
     clip = VideoFileClip(input_video, verbose=True, audio=True).subclip(start,end)
     clip.write_videofile(output_video, verbose=True)
 
-def split_video_shots(input_video, results: vi.VideoAnnotationResults):
-    if results is None:
-        return
-
-    if results.shot_annotations is None:
-        return
-
-    shots = results.shot_annotations
+def split_video_shots(input_video, shots):
+    print(f"Start split video shots {input_video}")
+    print(shots)
     if len(shots) == 0:
+        print(f"No video shots found in {input_video}")
         return
-    
-    # if len(shots) == 1:
-    #     yield input_video
-    #     return
     
 
     print(f" Video shots: {len(shots)} ".center(40, "-"))
     for i, shot in enumerate(shots):
+        print("DEBUG - shot")
+        print(shot)
         t1 = shot.start_time_offset.total_seconds()
         t2 = shot.end_time_offset.total_seconds()
         print(f"{i+1:>3} | {t1:7.3f} | {t2:7.3f}")
@@ -92,6 +86,7 @@ def split_video_shots(input_video, results: vi.VideoAnnotationResults):
         
         split_video(input_video=input_video, output_video=output_video, start=t1, end=t2)
         yield output_video, t1, t2
+
 
 
 

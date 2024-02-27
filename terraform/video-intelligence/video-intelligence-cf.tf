@@ -30,7 +30,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
 
   build_config {
     runtime     = "python310"
-    entry_point = "process_event" # Set the entry point
+    entry_point = "process_event_video" # Set the entry point
     source {
       storage_source {
         bucket = google_storage_bucket.gcf_source_vi.name
@@ -87,7 +87,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" 
 
   build_config {
     runtime     = "python310"
-    entry_point = "process_event" # Set the entry point
+    entry_point = "process_event_json" # Set the entry point
     source {
       storage_source {
         bucket = google_storage_bucket.gcf_source_vi.name
@@ -146,7 +146,7 @@ resource "google_cloudfunctions2_function" "gemini_classification" {
 
   build_config {
     runtime     = "python310"
-    entry_point = "classify_video_with_gemini_event" # Set the entry point
+    entry_point = "process_event_classify_video" # Set the entry point
     source {
       storage_source {
         bucket = google_storage_bucket.gcf_source_vi.name

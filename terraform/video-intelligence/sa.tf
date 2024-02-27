@@ -13,16 +13,10 @@
 # limitations under the License.
 
 resource "google_service_account" "video_trigger" {
-  account_id   = "video-trigger2-sa${local.app_suffix}"
+  account_id   = "video-trigger-sa${local.app_suffix}"
   display_name = "SA for video Trigger"
 }
 
-
-resource "google_project_iam_member" "video_trigger_event_receiver" {
-  project = var.project_id
-  role    = "roles/eventarc.eventReceiver"
-  member  = "serviceAccount:${google_service_account.video_trigger.email}"
-}
 
 resource "google_project_iam_member" "video_trigger_storage_reader" {
   project = var.project_id
@@ -51,39 +45,46 @@ resource "google_project_iam_member" "video_trigger_ai_sa_user" {
 }
 
 
-
-# GCP creates a special SA for GCS that needs to be granted pub/sub permissions
-# ref: https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/storage_project_service_account
-data "google_project" "project" {
-}
-data "google_storage_project_service_account" "gcs_account" {
-}
-locals {
-    pubsub_default_sa_email = "service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
-}
-
-resource "google_project_iam_member" "gcs_sa_to_pubsub" {
+resource "google_project_iam_member" "video_trigger_event_receiver" {
   project = var.project_id
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
-}
-
-resource "google_project_iam_member" "pubsub_sa_token_creator" {
-  project = var.project_id
-  role    = "roles/iam.serviceAccountTokenCreator"
-  member  = "serviceAccount:${local.pubsub_default_sa_email}"
-}
-
-resource "google_project_iam_member" "ai_sa_ml_service_agent" {
-  project = var.project_id
-  role    = "roles/ml.serviceAgent"
-  member  = "serviceAccount:${local.pubsub_default_sa_email}"
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${google_service_account.video_trigger.email}"
 }
 
 
-resource "google_project_iam_member" "ai_sa_user" {
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${local.pubsub_default_sa_email}"
-}
+
+# # GCP creates a special SA for GCS that needs to be granted pub/sub permissions
+# # ref: https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/storage_project_service_account
+# data "google_project" "project" {
+# }
+# data "google_storage_project_service_account" "gcs_account" {
+# }
+# locals {
+#     pubsub_default_sa_email = "service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+# }
+
+# resource "google_project_iam_member" "gcs_sa_to_pubsub" {
+#   project = var.project_id
+#   role    = "roles/pubsub.publisher"
+#   member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
+# }
+
+# resource "google_project_iam_member" "pubsub_sa_token_creator" {
+#   project = var.project_id
+#   role    = "roles/iam.serviceAccountTokenCreator"
+#   member  = "serviceAccount:${local.pubsub_default_sa_email}"
+# }
+
+# resource "google_project_iam_member" "ai_sa_ml_service_agent" {
+#   project = var.project_id
+#   role    = "roles/ml.serviceAgent"
+#   member  = "serviceAccount:${local.pubsub_default_sa_email}"
+# }
+
+
+# resource "google_project_iam_member" "ai_sa_user" {
+#   project = var.project_id
+#   role    = "roles/aiplatform.user"
+#   member  = "serviceAccount:${local.pubsub_default_sa_email}"
+# }
 
