@@ -2,66 +2,30 @@ import io
 import json
 import functions_framework
 
-
-import time
+import json
 import os
+import pandas as pd
+import time
 import video_intelligence as gvi
 
-from google.cloud import videointelligence
 import gcs as gcs 
 import videoedit as videoedit
 import pandas as pd
 
-video_client = videointelligence.VideoIntelligenceServiceClient()
  
 import config as config
 import gemini as gemini
 import utils as utils
-
-features = [
-    # videointelligence.Feature.OBJECT_TRACKING,
-    # videointelligence.Feature.LABEL_DETECTION,
-    videointelligence.Feature.SHOT_CHANGE_DETECTION,
-#    videointelligence.Feature.SPEECH_TRANSCRIPTION,
-    # videointelligence.Feature.LOGO_RECOGNITION,
-    videointelligence.Feature.EXPLICIT_CONTENT_DETECTION,
-    videointelligence.Feature.TEXT_DETECTION,
-    # videointelligence.Feature.FACE_DETECTION,
-    # videointelligence.Feature.PERSON_DETECTION,
-]
- 
-
-def featureId(feature):
-    if feature == videointelligence.Feature.OBJECT_TRACKING:
-        return "OBJECT_TRACKING"
-    if feature == videointelligence.Feature.LABEL_DETECTION:
-        return "LABEL_DETECTION"
-    if feature == videointelligence.Feature.SHOT_CHANGE_DETECTION:
-        return "SHOT_CHANGE_DETECTION"
-    if feature == videointelligence.Feature.SPEECH_TRANSCRIPTION:
-        return "SPEECH_TRANSCRIPTION"
-    if feature == videointelligence.Feature.LOGO_RECOGNITION:
-        return "LOGO_RECOGNITION"
-    if feature == videointelligence.Feature.EXPLICIT_CONTENT_DETECTION:
-        return "EXPLICIT_CONTENT_DETECTION"
-    if feature == videointelligence.Feature.TEXT_DETECTION:
-        return "TEXT_DETECTION"
-    if feature == videointelligence.Feature.FACE_DETECTION:
-        return "FACE_DETECTION"
-    if feature == videointelligence.Feature.PERSON_DETECTION:
-        return "PERSON_DETECTION"
-    
-    return "UNKNOWN"
-
+import bq as bq
 
 def main(cloud_event):
-    process_event(cloud_event)
+    dump_event(cloud_event)
     
 
 # Triggered by a change in a storage bucket
 @functions_framework.cloud_event
 def process_event_classify_video(cloud_event):
-    bucket, name, contentType = process_event(cloud_event)
+    bucket, name, contentType = dump_event(cloud_event)
 
     if contentType == "video/mp4" :
         print(f"Processing video file with gemini: {name}")
@@ -71,12 +35,10 @@ def process_event_classify_video(cloud_event):
 
     print("End - process_event_classify_video")
 
-import json
-import os
-import pandas as pd
 
 
 def moderate_video(uri, name):
+    
     try:
         res = gemini.content_moderation_gemini(uri)
         print(f"moderation content done on chunck uri {uri} with res = {res}")
@@ -101,10 +63,7 @@ def moderate_video(uri, name):
         dict["uri"] = uri
         df = pd.DataFrame([dict])
 
-        import bq as bq
-        table_id = "media.results"
-
-        bq.save_bq(df,table_id, project_id=config.PROJECT_ID )
+        bq.save_bq(df,config.BQ_TABLE_GEMINI_RESULT, project_id=config.PROJECT_ID )
     except Exception as e:
         print(f"ERROR in content_moderation(uri) = {uri}")
         print(e)
@@ -115,20 +74,30 @@ def moderate_video(uri, name):
 # Triggered by a change in a storage bucket
 @functions_framework.cloud_event
 def process_event_json(cloud_event):
-    bucket, name, contentType = process_event(cloud_event)
+    bucket, name, contentType = dump_event(cloud_event)
 
     if contentType == "application/octet-stream" or contentType == "text/json"  or contentType == "application/json":
         print("Processing json file: ", name)
         data = gcs.read_json_from_gcs(bucket, name)
+        try:
+            gvi.splitVideo(data)
+        except Exception as e:
+            print(f"ERROR in splitVideo(data) = {data}")
+            print(e)
 
-        gvi.splitVideo(data)
+        try:
+            print('Store json in BQ')
+            gvi.storeVideoIntelligenceData(data)
+        except Exception as e:
+            print(f"ERROR in splitVideo(data) = {data}")
+            print(e)
 
     else :
         print("Unsupported file type: ", contentType)
 
     print("end.") 
 
-def process_event(cloud_event):
+def dump_event(cloud_event):
     data = cloud_event.data
 
     event_id = cloud_event["id"]
@@ -141,14 +110,8 @@ def process_event(cloud_event):
     updated = data["updated"]
     contentType = data["contentType"]
 
+    print(f"Event ID: {event_id} - Event type: {event_type} - Bucket: {bucket} - File: {name} - Metageneration: {metageneration} - ContentType: {contentType} - TimeCreated: {timeCreated} - Updated: {updated}")
 
-    print(f"Event ID: {event_id}")
-    print(f"Event type: {event_type}")
-    print(f"Bucket: {bucket}")
-    print(f"File: {name}")
-    print(f"Metageneration: {metageneration}")
-    print(f"Created: {timeCreated}")
-    print(f"Updated: {updated}")
     return bucket,name,contentType
 
 
@@ -156,10 +119,9 @@ def process_event(cloud_event):
 # Triggered by a change in a storage bucket
 @functions_framework.cloud_event
 def process_event_video(cloud_event):
-    bucket, name, contentType = process_event(cloud_event)
+    bucket, name, contentType = dump_event(cloud_event)
 
     if contentType == "video/mp4" and ".mp4" in name:
-
 
         input_uri =  "gs://" + bucket + "/" + name
         
@@ -168,9 +130,9 @@ def process_event_video(cloud_event):
         language_code = getLanguageCode(input_uri)
 
         if config.SPLIT_BY_FEATURES == "1" :
-            annotate_video_split_by_features(input_uri, file_system, language_code)
+            gvi.annotate_video_split_by_features(input_uri, file_system, language_code)
         else:
-            annotate_video(input_uri, file_system, language_code)
+            gvi.annotate_video(input_uri, file_system, language_code)
         
 
     elif contentType == "application/octet-stream" or contentType == "text/json"  or contentType == "application/json":
@@ -299,112 +261,6 @@ def getLanguageCode(input_uri):
     if "hi-IN" in input_uri:        
         language_code="hi-IN"
     return language_code
-
-def annotate_video(input_uri, file_system, language_code):
-    
-    output_uri = f"gs://{config.WORKING_BUCKET}/{language_code}/{file_system} - {time.time()}.json"
-        
-    print(f"input_uri = {input_uri} - output_uri = {output_uri} file_sytem = {file_system}")
-
-    person_config = videointelligence.PersonDetectionConfig(
-            include_bounding_boxes=True,
-            include_attributes=True,
-            include_pose_landmarks=True,
-        )
-        
-    face_config = videointelligence.FaceDetectionConfig(
-            include_bounding_boxes=True,
-            include_attributes=True,
-        )
-    speech_config = videointelligence.SpeechTranscriptionConfig(
-            language_code=language_code,
-            enable_automatic_punctuation=True,
-            enable_speaker_diarization=True,
-            #diarization_speaker_count=2,
-        )
-
-    video_context = videointelligence.VideoContext(
-            speech_transcription_config=speech_config,
-            person_detection_config=person_config,
-            face_detection_config=face_config,
-        )    
-    print("Processing video ", input_uri)
-
-
-
-
-    operation = video_client.annotate_video(
-            request={
-                "features": features,
-                "input_uri": input_uri,
-                "output_uri": output_uri,
-                "video_context": video_context,
-            }
-        )   
-
-    print("Processing video.", operation)
-
-    while not operation.done():
-        print("Waiting for operation to complete...", operation)
-        print(operation.metadata)
-        time.sleep(30)
-    
-    print("finished processing.")       
-
-
-def annotate_video_split_by_features(input_uri, file_system, language_code):
-    operations = []
-    for feature in features:
-        print(featureId(feature))
-
-        output_uri = f"gs://{config.WORKING_BUCKET}/{language_code}/{featureId(feature)}/{file_system} - {time.time()}.json"
-            
-        print(f"input_uri = {input_uri} - output_uri = {output_uri} file_sytem = {file_system}")
-
-        person_config = videointelligence.PersonDetectionConfig(
-                include_bounding_boxes=True,
-                include_attributes=True,
-                include_pose_landmarks=True,
-            )
-            
-        face_config = videointelligence.FaceDetectionConfig(
-                include_bounding_boxes=True,
-                include_attributes=True,
-            )
-        speech_config = videointelligence.SpeechTranscriptionConfig(
-                language_code=language_code,
-                enable_automatic_punctuation=True,
-                enable_speaker_diarization=True,
-                #diarization_speaker_count=2,
-            )
-
-        video_context = videointelligence.VideoContext(
-#                speech_transcription_config=speech_config,
-                person_detection_config=person_config,
-                face_detection_config=face_config,
-            )    
-        print("Processing video ", input_uri)
-
-        operation = video_client.annotate_video(
-                request={
-                    "features": [feature],
-                    "input_uri": input_uri,
-                    "output_uri": output_uri,
-                    "video_context": video_context,
-                }
-            )   
-
-        print("Processing video.", operation)
-        operations.append(operation)
-
-    print("Waiting for the operations to complete...")    
-    for operation in operations:
-        while not operation.done():
-            print("Waiting for operation to complete...", operation)
-            print(operation.metadata)
-            time.sleep(30)
-    
-    print("finished processing.")       
 
 
 

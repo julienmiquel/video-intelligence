@@ -55,6 +55,7 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
         WORKING_BUCKET = google_storage_bucket.working_bucket.name
         PROJECT_ID = var.project_id
         REGION = var.region
+        BQ_DATASET = google_bigquery_dataset.video_analytics.dataset_id
     }
 
   }
@@ -113,6 +114,8 @@ resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" 
         WORKING_BUCKET = google_storage_bucket.working_bucket.name
         PROJECT_ID = var.project_id
         REGION = var.region
+        BQ_DATASET = google_bigquery_dataset.video_analytics.dataset_id
+
     }
 
   }
@@ -172,6 +175,8 @@ resource "google_cloudfunctions2_function" "gemini_classification" {
         WORKING_BUCKET = google_storage_bucket.working_bucket.name
         PROJECT_ID = var.project_id
         REGION = var.region
+        BQ_DATASET = google_bigquery_dataset.video_analytics.dataset_id
+
     }
 
   }
