@@ -2,8 +2,8 @@ import config as config
 import json
 
 import vertexai
-from vertexai.preview.generative_models import GenerativeModel, Part
-import vertexai.preview.generative_models as generative_models
+from vertexai.generative_models import GenerativeModel, Part
+import vertexai.generative_models as generative_models
 
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
@@ -40,34 +40,75 @@ JSON:
     return json_data
 
 
+import base64
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
+import vertexai.generative_models as generative_models
 
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-def content_moderation_gemini(video_input,     prompt = """You are an expert in content moderation.
-Explain in detail why you provide the rating with the content moderation rule and without offensive quote.
+@retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(10))
+def content_moderation_gemini(video_input, prompt = None):
+    print(f"content_moderation_gemini {video_input}")
+    if type(video_input) == str:
+        video_input = Part.from_uri(uri=video_input, mime_type="video/mp4")
 
-You classify text with CSA rules. Answer short JSON results like an API without quote with the following format:
-{"\"csa_rules\": {
-    \"violence\": 0,
-    \"violence_evidence\":  \"\",
+    elif type(input) == 'Part':
+        video_input = video_input
+    else:
+        print(f"input is not supported: {video_input}")
+        return 
+    
+    if prompt == None:
+        prompt =    """Classification task. Choose between PEGI rating from (3, 7, 12, 16, 18). Based on the following content rate the intensity of the scene from: 
+PEGI 3 The content of video with a PEGI 3 rating is considered suitable for all age groups. The video should not contain any sounds or pictures that are likely to frighten young children. A very mild form of violence (in a comical context or a childlike setting) is acceptable. No bad language should be heard. 
 
-    \"hate_speech\": 0,
-    \"hate_evidence\":  \"\",
+PEGI 7 video content with scenes or sounds that can possibly frightening to younger children should fall in this category. Very mild forms of violence (implied, non-detailed, or non-realistic violence) are acceptable for a video with a PEGI 7 rating 
 
-    \"sexual_content\": 0,
-    \"sexual_evidence\":  \"\",
+PEGI 12 Video that show violence of a slightly more graphic nature towards fantasy characters or nonrealistic violence towards human-like characters would fall in this age category. Sexual innuendo or sexual posturing can be present, while any bad language in this category must be mild. Gambling as it is normally carried out in real life in casinos or gambling halls can also be present.
 
-    \"drugs_and_alcohol\": 0,
-    \"drugs_and_alcohol_evidence\":  \"\",
+PEGI 16 This rating is applied once the depiction of violence (or sexual activity) reaches a stage that looks the same as would be expected in real life. The use of bad language in video with a PEGI 16 rating can be more extreme, while video of chance, and the use of tobacco, alcohol or illegal drugs can also be present. 
 
-    \"profanity\": 0,
-    \"profanity_evidence\":  \"\",
-  }
-}
+PEGI 18 is rating for adult content.
 
-Evaluate CSA rules based on this video part and output them in JSON. Return a valide JSON format.
+CONTENT TO RATE: 
+"""
 
-VIDEO:
-"""):
+    vertexai.init(project=config.PROJECT_ID, location=config.REGION)
+    model = GenerativeModel("gemini-1.0-pro-vision-001")
+    responses = model.generate_content(
+        [prompt, video_input, """Video classification """],
+        generation_config={
+            "max_output_tokens": 2048,
+            "temperature": 0.1,
+            "top_p": 1,
+            "top_k": 40
+        },
+        safety_settings={
+            generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        stream=True,
+    )
+  
+        
+
+
+    answer = []
+    for response in responses:
+        text = response.text
+        print(text, end="")    
+        answer.append(text)
+
+    str_json = "".join(answer)
+    str_json = CleanJsonOutput(str_json)
+    #print(str_json)
+
+    return str_json
+
+
+@retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(3))
+def content_moderation_gemini_old(video_input):
     print(f"content_moderation_gemini {video_input}")
     if type(video_input) == str:
         video1 = Part.from_uri(uri=video_input, mime_type="video/mp4")
@@ -78,15 +119,26 @@ VIDEO:
         print(f"input is not supported: {video_input}")
         return 
     
+    vertexai.init(project=config.PROJECT_ID, location=config.REGION)
 
+    model = GenerativeModel("gemini-1.0-pro-vision-001")
 
-    model = GenerativeModel("gemini-pro-vision")
+    prompt = """You are an expert in violence content moderation.
+Explain why you provide the rating with the content moderation rule and without offensive quote.
+
+You classify text with CSA rules. Answer short JSON results like an API without quote with the following format:
+{\"\\\"csa_rules\\\": {
+    \\\"violence\\\": \"0\",
+    \\\"violence_evidence\\\":  \\\"\\\"
+}
+
+Evaluate CSA rules based on this video part and output them in JSON. Return a valide JSON format."""
+
     responses = model.generate_content(
-    [prompt
-         , video1, "JSON:"],
+        [prompt, video1, "JSON"],
         generation_config={
             "max_output_tokens": 2048,
-            "temperature": 0.1,
+            "temperature": 0,
             "top_p": 1,
             "top_k": 40
         },

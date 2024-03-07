@@ -2,6 +2,7 @@
 import json
 import os
 import pandas as pd
+import datetime
 
 def flatten_json(data):
     
@@ -22,3 +23,17 @@ def replace_extension(filename,  new_extension):
     base, ext = os.path.splitext(filename)  # Split into base filename and extension    
     return base + new_extension
     
+
+def get_date_time_string(timestamp = None):
+    """Returns a string representing the current date and time.
+
+    Args:
+        timestamp: A timestamp object.
+
+    Returns:
+        A string representing the current date and time.
+    """
+    if timestamp is None:
+        timestamp = datetime.datetime.now()
+
+    return timestamp.strftime("%Y-%m-%d %H:%M:%S")  

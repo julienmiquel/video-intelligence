@@ -37,36 +37,72 @@ def process_event_classify_video(cloud_event):
 
 
 
+
 def moderate_video(uri, name):
-    
-    try:
-        res = gemini.content_moderation_gemini(uri)
-        print(f"moderation content done on chunck uri {uri} with res = {res}")
+    res = gemini.content_moderation_gemini(uri)
+    print(f"moderation content done on chunck uri {uri} with res = {res}")
+    # print(80*"*")
+    # print(res)
+    # print(80*"*")
 
-        print("save json result in output bucket")
-        json_file_path = gcs.write_text_to_gcs(config.OUTPUT_BUCKET, utils.replace_extension(name, ".json"), res, "text/json")
-        print(f"json_file_path = {json_file_path}")
+    print("save json result in output bucket")
+    json_file_path = gcs.write_text_to_gcs(config.OUTPUT_BUCKET, utils.replace_extension(name, ".json"), res, "text/json")
+    print(f"json_file_path = {json_file_path}")
 
-        dict= json.loads(res)
-        dict= dict["csa_rules"]
+    # dict= json.loads(res)
+    # dict= dict["csa_rules"]
 
-        print("read tags from source uri")
-        bucketname, video_blobname = gcs.split_gcs_uri(uri)
-        tags = gcs.read_tags_from_gcs(bucketname, video_blobname)
+    print("read tags from source uri")
+    bucketname, video_blobname = gcs.split_gcs_uri(uri)
+    tags = gcs.read_tags_from_gcs(bucketname, video_blobname)
 
-        if tags is None:
-            print("no tags found")
-        else:
-            print(f"uri= {uri} - tags = {tags}")
-            dict.update(tags)            
+    if tags is None:
+        print("no tags found. WARNING do not save.")
+    else:
+        print(f"uri= {uri} - tags = {tags}")
+        dict.update(tags)     
+        tags["description"]       = res
+        # generate time
+        tags["update_time"]       = utils.get_date_time_string()
 
-        dict["uri"] = uri
-        df = pd.DataFrame([dict])
+        tags["uri"] = uri
+        df = pd.DataFrame([tags])
 
+        print(df.to_json())
         bq.save_bq(df,config.BQ_TABLE_GEMINI_RESULT, project_id=config.PROJECT_ID )
-    except Exception as e:
-        print(f"ERROR in content_moderation(uri) = {uri}")
-        print(e)
+        print("saved in bq")
+
+
+def moderate_video_old(uri, name):
+    
+    # try:
+    res = gemini.content_moderation_gemini(uri)
+    print(f"moderation content done on chunck uri {uri} with res = {res}")
+
+    print("save json result in output bucket")
+    json_file_path = gcs.write_text_to_gcs(config.OUTPUT_BUCKET, utils.replace_extension(name, ".json"), res, "text/json")
+    print(f"json_file_path = {json_file_path}")
+
+    dict= json.loads(res)
+    dict= dict["csa_rules"]
+
+    print("read tags from source uri")
+    bucketname, video_blobname = gcs.split_gcs_uri(uri)
+    tags = gcs.read_tags_from_gcs(bucketname, video_blobname)
+
+    if tags is None:
+        print("no tags found")
+    else:
+        print(f"uri= {uri} - tags = {tags}")
+        dict.update(tags)            
+
+    dict["uri"] = uri
+    df = pd.DataFrame([dict])
+
+    bq.save_bq(df,config.BQ_TABLE_GEMINI_RESULT, project_id=config.PROJECT_ID )
+    # except Exception as e:
+    #     print(f"ERROR in content_moderation(uri) = {uri}")
+    #     print(e)
 
 
 
@@ -265,3 +301,9 @@ def getLanguageCode(input_uri):
 
 
 
+
+# Triggered by a change in a storage bucket
+@functions_framework.cloud_event
+def process_event_embedding(cloud_event):
+    bucket, name, contentType = dump_event(cloud_event)
+    

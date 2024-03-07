@@ -42,7 +42,10 @@ resource "google_cloudfunctions2_function" "video_intelligence_function" {
   
 
  service_config {
-    max_instance_count = 3
+    available_cpu = "1"
+    max_instance_count = 20
+    max_instance_request_concurrency = 20
+
     available_memory   = "512M"
     timeout_seconds    = 500
 
@@ -101,8 +104,10 @@ resource "google_cloudfunctions2_function" "video_intelligence_function_2_json" 
 
  service_config {
     available_cpu = "4"
-    max_instance_count = 3
-    available_memory   = "2Gi"
+    max_instance_count = 100
+    max_instance_request_concurrency = 1
+
+    available_memory   = "16Gi"
     timeout_seconds    = 500
 
     ingress_settings = "ALLOW_INTERNAL_ONLY"
@@ -161,9 +166,10 @@ resource "google_cloudfunctions2_function" "gemini_classification" {
   
 
  service_config {
-    available_cpu = "1"
-    max_instance_count = 3
-    available_memory   = "512M"
+    available_cpu = "4"
+    max_instance_count = 10
+    max_instance_request_concurrency = 10
+    available_memory   = "2Gi"
     timeout_seconds    = 500
 
     ingress_settings = "ALLOW_INTERNAL_ONLY"
