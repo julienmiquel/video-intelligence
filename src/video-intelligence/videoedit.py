@@ -87,6 +87,39 @@ def split_video_shots(input_video, shots):
         split_video(input_video=input_video, output_video=output_video, start=t1, end=t2)
         yield output_video, t1, t2
 
+def split_video_shots_time_min(input_video, shots, min_shot_time):
+    print(f"Start split video shots {input_video}")
+    print(shots)
+    if len(shots) == 0:
+        print(f"No video shots found in {input_video}")
+        return
+    
+
+    print(f" Video shots: {len(shots)} ".center(40, "-"))
+    index = 0
+    extend_chunk = False
+    
+    for i, shot in enumerate(shots):
+        print("DEBUG - shot")
+        print(shot)
+        if extend_chunk == False:
+            t1 = shot.start_time_offset.total_seconds()
+        
+        t2 = shot.end_time_offset.total_seconds()
+        print(f"{i+1:>3} | {t1:7.3f} | {t2:7.3f}")
+
+        output_video = f"{input_video } - {index} - {t1} - {t2}.mp4"        
+        if (t2 -t1) > min_shot_time:
+            extend_chunk = False
+
+            print(f"input_video={input_video}, output_video={output_video}, start={t1}, end={t2}")
+            index = index+1
+
+            split_video(input_video=input_video, output_video=output_video, start=t1, end=t2)
+            yield output_video, t1, t2
+        else:
+            print(f"SKIP - input_video={input_video}, output_video={output_video}, start={t1}, end={t2}")
+            extend_chunk = True
 
 
 

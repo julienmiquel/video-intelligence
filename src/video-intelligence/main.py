@@ -201,7 +201,7 @@ def process_event_video(cloud_event):
             
             print(f"video_input = {video_input}")
 
-            for input_part, t1,t2 in videoedit.split_video_shots(video_input,annotation_result ):
+            for input_part, t1,t2 in videoedit.split_video_shots_time_min(video_input,annotation_result , config.MIN_SHOT_DURATION_SECONDS):
                 print(f"split_video_shots input_part = {input_part}")
                 index = index + 1
                 # remove file extention

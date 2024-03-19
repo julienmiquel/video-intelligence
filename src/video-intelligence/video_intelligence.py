@@ -16,7 +16,7 @@ features = [
     # vi.Feature.OBJECT_TRACKING,
     vi.Feature.LABEL_DETECTION,
     vi.Feature.SHOT_CHANGE_DETECTION,
-    vi.Feature.SPEECH_TRANSCRIPTION,
+    # vi.Feature.SPEECH_TRANSCRIPTION,
     # vi.Feature.LOGO_RECOGNITION,
     vi.Feature.EXPLICIT_CONTENT_DETECTION,
     vi.Feature.TEXT_DETECTION,
@@ -134,7 +134,7 @@ def splitVideo(data):
 
 
 def process_shots(shots, index, uri, video_blobname, video_input):
-    for input_part, t1,t2 in videoedit.split_video_shots(video_input,shots ):
+    for input_part, t1,t2 in videoedit.split_video_shots_time_min(video_input,shots, config.VIDEO_SHOT_MIN_DURATION ):
         print(f"split_video_shots input_part = {input_part}")
         index = index + 1
             # remove file extention
@@ -169,19 +169,19 @@ def annotate_video(input_uri, file_system, language_code):
     print(f"input_uri = {input_uri} - output_uri = {output_uri} file_sytem = {file_system}")
 
     person_config = vi.PersonDetectionConfig(
-            include_bounding_boxes=True,
+            #include_bounding_boxes=True,
             include_attributes=True,
             include_pose_landmarks=True,
         )
         
     face_config = vi.FaceDetectionConfig(
-            include_bounding_boxes=True,
+            #include_bounding_boxes=True,
             include_attributes=True,
         )
     speech_config = vi.SpeechTranscriptionConfig(
             language_code=language_code,
-            enable_automatic_punctuation=True,
-            enable_speaker_diarization=True,
+            #enable_automatic_punctuation=True,
+            #enable_speaker_diarization=True,
             #diarization_speaker_count=2,
         )
 

@@ -20,10 +20,7 @@ variable "region" {
   type        = string
   description = "GCP Region"
 }
-# variable "wf_region" {
-#   type        = string
-#   description = "Cloud Workflows Region (choose a supported region: https://cloud.google.com/workflows/docs/locations)"
-# }
+
 variable "suffix" {
   type        = string
   description = "Suffix to be used for all created resources (3 to 6 characters)"
@@ -32,19 +29,3 @@ variable "suffix" {
     error_message = "Suffix must be between 3 and 6 characters."
   }
 }
-# variable "image_dlp_runner" {
-#   type        = string
-#   description = "Docker image for video Merger"
-# }
-# variable "image_findings_writer" {
-#   type        = string
-#   description = "Docker image for video Merger"
-# }
-# variable "image_video_merger" {
-#   type        = string
-#   description = "Docker image for video Merger"
-# }
-# variable "image_video_splitter" {
-#   type        = string
-#   description = "Docker image for video Merger"
-# }

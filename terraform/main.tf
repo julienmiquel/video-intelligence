@@ -16,6 +16,24 @@ resource "random_id" "video_intelligence" {
   byte_length = 2
 }
 
+# resource "random_id" "bucket_prefix" {
+#   byte_length = 8
+# }
+
+# resource "google_storage_bucket" "default" {
+#   name          = "${random_id.bucket_prefix.hex}-bucket-tfstate"
+#   force_destroy = false
+#   location      = "EU"
+#   storage_class = "STANDARD"
+#   versioning {
+#     enabled = true
+#   }
+  
+#   depends_on = [
+#     google_project_iam_member.default
+#   ]
+# }
+
 module "video_intelligence" {
   source = "./video-intelligence"
 
@@ -23,8 +41,4 @@ module "video_intelligence" {
   region                = var.region
   # wf_region             = var.wf_region
   suffix                = random_id.video_intelligence.hex
-  # image_dlp_runner      = "gcr.io/${var.project_id}/dlp-runner"
-  # image_findings_writer = "gcr.io/${var.project_id}/findings-writer"
-  # image_video_merger      = "gcr.io/${var.project_id}/video-merger"
-  # image_video_splitter    = "gcr.io/${var.project_id}/video-splitter"
 }

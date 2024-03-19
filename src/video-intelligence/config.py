@@ -1,7 +1,11 @@
 import os
 
+REGION_BACKUP_2  = os.environ.get("REGION", "europe-west4")
+REGION_BACKUP  = os.environ.get("REGION", "europe-west3")
+REGION  = os.environ.get("REGION", "europe-west1")
 
-REGION  = os.environ.get("REGION", "us-central1")
+REGIONS = [REGION, REGION_BACKUP, REGION_BACKUP_2]
+
 PROJECT_ID= os.environ.get("PROJECT_ID", "")
 OUTPUT_BUCKET  = os.environ.get("OUTPUT_BUCKET", "")
 SPLIT_BY_FEATURES  = os.environ.get("SPLIT_BY_FEATURES", "1")
@@ -19,3 +23,7 @@ BQ_TABLE_VIDEO_INTELLIGENCE_LABEL = os.environ.get("BQ_TABLE_VIDEO_INTELLIGENCE_
 BQ_TABLE_VIDEO_INTELLIGENCE = os.environ.get("BQ_TABLE_VIDEO_INTELLIGENCE", f"{BQ_DATASET}.video_intelligence")
 
 TAG_TO_ANALYZE = "CSA"
+
+VIDEO_SHOT_MIN_DURATION = os.environ.get("VIDEO_SHOT_MIN_DURATION", 5)
+
+MODEL_MULTIMODAL = os.environ.get("MODEL_MULTIMODAL", "gemini-1.0-pro-vision-001")

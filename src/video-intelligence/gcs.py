@@ -23,12 +23,7 @@ def read_json_from_gcs(bucket_name, file_name):
         
         data = json.loads(contents)
         return data
-        #df = pd.json_normalize(data)
-        #data_json = df.to_json( orient="records")
-        #data_str = data_json.dumps(orient="records")
-        #bucket.blob(file_name + "_flattened.json").upload_from_string(data_json, 'text/json')
 
-        return data
     except Exception as e:
         print(f"Error reading JSON file: {e}")
         return None

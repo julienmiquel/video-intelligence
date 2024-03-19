@@ -1,3 +1,5 @@
+from time import sleep
+from grpc import StatusCode
 import config as config
 import json
 
@@ -45,11 +47,13 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 import vertexai.generative_models as generative_models
 
-@retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(10))
+#@retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(10))
 def content_moderation_gemini(video_input, prompt = None):
     print(f"content_moderation_gemini {video_input}")
     if type(video_input) == str:
         video_input = Part.from_uri(uri=video_input, mime_type="video/mp4")
+        print("Create videoPArt")
+        print(video_input)
 
     elif type(input) == 'Part':
         video_input = video_input
@@ -71,42 +75,59 @@ PEGI 18 is rating for adult content.
 
 CONTENT TO RATE: 
 """
+    isRetryAble = True
+    stream=False
+    while( isRetryAble):
+        for location in config.REGIONS:
+            try:
+                print(f"vertexai init project={config.PROJECT_ID}, location={location}") 
+            
+                vertexai.init(project=config.PROJECT_ID, location=location)
+                model = GenerativeModel(config.MODEL_MULTIMODAL)
+                responses = model.generate_content(
+                    [prompt, video_input],
+                    generation_config={
+                        "max_output_tokens": 2048,
+                        "temperature": 0.,
+                        "top_p": 1,
+                        "top_k": 40
+                    },
+                    safety_settings={
+                        generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                        generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                        generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                        generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    stream=stream,
+                )
+            
+                if stream:
+                    answer = []
+                    for response in responses:
+                        text = response.text
+                        print(text, end="")    
+                        answer.append(text)
 
-    vertexai.init(project=config.PROJECT_ID, location=config.REGION)
-    model = GenerativeModel("gemini-1.0-pro-vision-001")
-    responses = model.generate_content(
-        [prompt, video_input, """Video classification """],
-        generation_config={
-            "max_output_tokens": 2048,
-            "temperature": 0.1,
-            "top_p": 1,
-            "top_k": 40
-        },
-        safety_settings={
-            generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        },
-        stream=True,
-    )
-  
-        
+                    str_json = "".join(answer)
+                else:
+                    str_json = responses.text
 
+                print(str_json)
+                str_json = CleanJsonOutput(str_json)
 
-    answer = []
-    for response in responses:
-        text = response.text
-        print(text, end="")    
-        answer.append(text)
+                return str_json
 
-    str_json = "".join(answer)
-    str_json = CleanJsonOutput(str_json)
-    #print(str_json)
+            except Exception as e:
+                print(f"ERROR in content_moderation_gemini(data) = {video_input} - location = {location}")
+                print(e)
+                
+                if "RESOURCE_EXHAUSTED" in f"{e}" :
+                    isRetryAble = True
+                    sleep(10)
+                else:
+                    isRetryAble = False
 
-    return str_json
-
-
+    return "ERROR"
 @retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(3))
 def content_moderation_gemini_old(video_input):
     print(f"content_moderation_gemini {video_input}")
