@@ -73,7 +73,7 @@ PEGI 16 This rating is applied once the depiction of violence (or sexual activit
 
 PEGI 18 is rating for adult content.
 
-CONTENT TO RATE: 
+VIDEO : 
 """
     isRetryAble = True
     stream=False
