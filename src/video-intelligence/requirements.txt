@@ -6,3 +6,7 @@ pandas
 MoviePy
 pandas-gbq
 tenacity
+google-cloud-speech 
+librosa 
+jiwer 
+protobuf

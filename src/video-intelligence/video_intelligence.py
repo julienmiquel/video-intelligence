@@ -16,7 +16,7 @@ features = [
     # vi.Feature.OBJECT_TRACKING,
     vi.Feature.LABEL_DETECTION,
     vi.Feature.SHOT_CHANGE_DETECTION,
-    # vi.Feature.SPEECH_TRANSCRIPTION,
+    vi.Feature.SPEECH_TRANSCRIPTION,
     # vi.Feature.LOGO_RECOGNITION,
     vi.Feature.EXPLICIT_CONTENT_DETECTION,
     vi.Feature.TEXT_DETECTION,
@@ -99,21 +99,19 @@ def splitVideo(data):
     content_moderation_text_based = None
     texts = None
     for annotation_result in annotation.annotation_results:
-        # ex: input_bucket     "input_uri": "/video-input-bucket-2f60/fr-FR/cdanslair.mp4",
+
         index = 0
 
         print(f"Finished processing input: {annotation_result.input_uri}" ) 
         uri  = "gs:/"+annotation_result.input_uri
         
         print(f"full uri = {uri}")
-        # gs://video-input-bucket-2f60/fr-FR/cdanslair.mp4
 
         bucketname, video_blobname = gcs.split_gcs_uri(uri)
         print(f"bucketname = {bucketname} - blobname = {video_blobname}")
-        # video-input-bucket-2f60  /fr-FR/cdanslair.mp4
+
         localfile = video_blobname.replace("/", "_") # -{index}
         print(f"localfile = {localfile}")
-        # fr-FR_cdanslair.mp4
 
         video_input = gcs.store_temp_video_from_gcs(bucketname, video_blobname, localfile= localfile)
         

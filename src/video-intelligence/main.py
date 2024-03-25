@@ -17,6 +17,7 @@ import config as config
 import gemini as gemini
 import utils as utils
 import bq as bq
+import stt as stt
 
 def main(cloud_event):
     dump_event(cloud_event)
@@ -32,11 +33,36 @@ def process_event_classify_video(cloud_event):
 
         uri = "gs://" + bucket + "/" + name
         moderate_video(uri, name)
+        export_audio(uri, name)
 
     print("End - process_event_classify_video")
 
+    if contentType == "audio/mp3" :
+        languageCode = getLanguageCode(uri)
+        stt.convert(uri, languageCode)
 
 
+def export_audio(uri):
+    bucketname, video_blobname = gcs.split_gcs_uri(uri)
+    localfile = video_blobname.replace("/", "_") # -{index}
+    print(f"localfile = {localfile}")
+    video_input = gcs.store_temp_video_from_gcs(bucketname, video_blobname, localfile= localfile)
+    mp3_file = videoedit.export_audio(video_input)
+    
+    gcs_file_name = video_blobname[0:-1] + "3" # mp3
+    tags = {
+        "video_source": uri,                    
+        "video_blobname": video_blobname        
+    }
+
+    blob = gcs.write_file_to_gcs(config.OUTPUT_BUCKET, 
+                                gcs_file_name=gcs_file_name, 
+                                local_file_path=mp3_file, 
+                                tags=tags)
+
+    chunck_uri=  f"gs://{config.OUTPUT_BUCKET}/{blob.name}"
+
+    print(80*"*" + f" MP3 AUDIO URI {chunck_uri}" + 80*"*")    
 
 def moderate_video(uri, name):
     res = gemini.content_moderation_gemini(uri)
@@ -182,20 +208,17 @@ def process_event_video(cloud_event):
         texts = None
         index = 0
         for annotation_result in annotation.annotation_results:
-            # ex: input_bucket     "input_uri": "/video-input-bucket-2f60/fr-FR/cdanslair.mp4",
 
             print(f"Finished processing input: {annotation_result.input_uri}" ) 
             uri  = "gs:/"+annotation_result.input_uri
             
             print(f"full uri = {uri}")
-            # gs://video-input-bucket-2f60/fr-FR/cdanslair.mp4
 
             bucketname, video_blobname = gcs.split_gcs_uri(uri)
             print(f"bucketname = {bucketname} - blobname = {video_blobname}")
-            # video-input-bucket-2f60  /fr-FR/cdanslair.mp4
+
             localfile = video_blobname.replace("/", "_") # -{index}
             print(f"localfile = {localfile}")
-            # fr-FR_cdanslair.mp4
 
             video_input = gcs.store_temp_video_from_gcs(bucketname, video_blobname, localfile= localfile)
             
@@ -204,8 +227,6 @@ def process_event_video(cloud_event):
             for input_part, t1,t2 in videoedit.split_video_shots_time_min(video_input,annotation_result , config.MIN_SHOT_DURATION_SECONDS):
                 print(f"split_video_shots input_part = {input_part}")
                 index = index + 1
-                # remove file extention
-                #video_blobname = os.path.splitext(video_blobname)[0]
 
                 gcs_file_name = f"{config.TAG_TO_ANALYZE}/{video_blobname}/chunks - {index} - {t1} - {t2}.mp4"
                 print(f"write in output bucket chunck file gcs_file_name = {gcs_file_name}")

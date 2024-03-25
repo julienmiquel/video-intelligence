@@ -9,7 +9,6 @@ import vertexai.preview.generative_models as generative_models
 
 from moviepy.editor import VideoFileClip
 from google.cloud import videointelligence_v1 as vi
-from moviepy.editor import VideoFileClip
 
 def get_video_text(results: vi.VideoAnnotationResults, min_frames: int = 15):
     annotations = results.text_annotations
@@ -175,3 +174,24 @@ def category_entities_to_str(category_entities: Sequence[vi.Entity]) -> str:
     entities = ", ".join([e.description for e in category_entities])
     return f" ({entities})"
     
+
+def export_audio(mp4_file):
+
+    # Define the input video file and output audio file
+    mp3_file = mp4_file[0:-1] + "3" #"audio.mp3"
+
+    # Load the video clip
+    with VideoFileClip(mp4_file, verbose=True, audio=True) as video_clip:
+
+        # Extract the audio from the video clip
+        audio_clip = video_clip.audio
+
+        # Write the audio to a separate file
+        audio_clip.write_audiofile(mp3_file)
+
+        # Close the video and audio clips
+        audio_clip.close()
+        
+
+    print("Audio extraction successful!")
+    return mp3_file
