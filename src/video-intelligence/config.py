@@ -15,6 +15,7 @@ WORKING_BUCKET  = os.environ.get("WORKING_BUCKET", "")
 
 BQ_DATASET = os.environ.get("BQ_DATASET", "media")
 
+BQ_TABLE_EMBEDDINGS = os.environ.get("BQ_TABLE_EMBEDDINGS", f"{PROJECT_ID}.{BQ_DATASET}.video_embeddings")
 BQ_TABLE_GEMINI_RESULT = os.environ.get("BQ_TABLE_GEMINI_RESULT", f"{BQ_DATASET}.results")
 BQ_TABLE_VIDEO_INTELLIGENCE_EXPLICIT_CONTENT = os.environ.get("BQ_TABLE_VIDEO_INTELLIGENCE_EXPLICIT_CONTENT", f"{BQ_DATASET}.video_intelligence_explicit_content")
 BQ_TABLE_VIDEO_INTELLIGENCE_TEXT = os.environ.get("BQ_TABLE_VIDEO_INTELLIGENCE_TEXT", f"{BQ_DATASET}.video_intelligence_ocr")

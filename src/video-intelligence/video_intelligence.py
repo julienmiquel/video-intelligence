@@ -14,13 +14,13 @@ video_client = vi.VideoIntelligenceServiceClient()
 
 features = [
     # vi.Feature.OBJECT_TRACKING,
-    vi.Feature.LABEL_DETECTION,
+    # vi.Feature.LABEL_DETECTION,
     vi.Feature.SHOT_CHANGE_DETECTION,
-    vi.Feature.SPEECH_TRANSCRIPTION,
+    # vi.Feature.SPEECH_TRANSCRIPTION,
     # vi.Feature.LOGO_RECOGNITION,
-    vi.Feature.EXPLICIT_CONTENT_DETECTION,
-    vi.Feature.TEXT_DETECTION,
-    vi.Feature.FACE_DETECTION,
+    # vi.Feature.EXPLICIT_CONTENT_DETECTION,
+    # vi.Feature.TEXT_DETECTION,
+    # vi.Feature.FACE_DETECTION,
     # vi.Feature.PERSON_DETECTION,
 ]
  

@@ -4,20 +4,20 @@ import functions_framework
 
 import json
 import os
-import pandas as pd
-import time
-import video_intelligence as gvi
 
+import time
+import pandas as pd
+import numpy as np
+
+import video_intelligence as gvi
 import gcs as gcs 
 import videoedit as videoedit
-import pandas as pd
-
- 
 import config as config
 import gemini as gemini
 import utils as utils
 import bq as bq
 import stt as stt
+import embedding as embedding
 
 def main(cloud_event):
     dump_event(cloud_event)
@@ -32,8 +32,21 @@ def process_event_classify_video(cloud_event):
         print(f"Processing video file with gemini: {name}")
 
         uri = "gs://" + bucket + "/" + name
-        moderate_video(uri, name)
-        export_audio(uri, name)
+        tags = moderate_video(uri)
+        
+        #TODO: call embedding
+        # https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings#aiplatform_sdk_text_image_embedding-python_vertex_ai_sdk
+        if tags:
+            context = tags['description']
+            embeddings = embedding.get_image_video_text_embeddings(config.PROJECT_ID,config.REGION,uri, context)
+
+            df = pd.DataFrame(embeddings)
+
+            df['embeddings'] = df['embeddings'].apply(np.array)  # Assuming embeddings are lists/tuples of numbers
+
+            bq.save_embeddings_df_bq(df,config.BQ_TABLE_EMBEDDINGS)
+            
+        #export_audio(uri)
 
     print("End - process_event_classify_video")
 
@@ -64,7 +77,7 @@ def export_audio(uri):
 
     print(80*"*" + f" MP3 AUDIO URI {chunck_uri}" + 80*"*")    
 
-def moderate_video(uri, name):
+def moderate_video(uri):
     res = gemini.content_moderation_gemini(uri)
     print(f"moderation content done on chunck uri {uri} with res = {res}")
     # print(80*"*")
@@ -72,6 +85,7 @@ def moderate_video(uri, name):
     # print(80*"*")
 
     print("save json result in output bucket")
+    bucketname, name = gcs.split_gcs_uri(uri)
     json_file_path = gcs.write_text_to_gcs(config.OUTPUT_BUCKET, utils.replace_extension(name, ".json"), res, "text/json")
     print(f"json_file_path = {json_file_path}")
 
@@ -79,8 +93,8 @@ def moderate_video(uri, name):
     # dict= dict["csa_rules"]
 
     print("read tags from source uri")
-    bucketname, video_blobname = gcs.split_gcs_uri(uri)
-    tags = gcs.read_tags_from_gcs(bucketname, video_blobname)
+    #bucketname, video_blobname = gcs.split_gcs_uri(uri)
+    tags = gcs.read_tags_from_gcs(bucketname, name)
 
     if tags is None:
         print("no tags found. WARNING do not save.")
@@ -97,6 +111,7 @@ def moderate_video(uri, name):
         print(df.to_json())
         bq.save_bq(df,config.BQ_TABLE_GEMINI_RESULT, project_id=config.PROJECT_ID )
         print("saved in bq")
+    return tags
 
 
 def moderate_video_old(uri, name):
