@@ -134,6 +134,13 @@ def get_image_video_text_embeddings(
     model = MultiModalEmbeddingModel.from_pretrained("multimodalembedding")
     #image = Image.load_from_file(image_path)
     video = Video(gcs_uri=video_path)
+    
+    # if video_segment_config == None:
+    #     video_segment_config =   VideoSegmentConfig(      
+    #         start_offset_sec= 0,
+    #         end_offset_sec= 120,
+    #         interval_sec = 3
+    #     )
 
     contextual_text_input = contextual_text
     if len(contextual_text_input) > 1024:

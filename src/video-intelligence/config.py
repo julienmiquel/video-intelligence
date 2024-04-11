@@ -1,10 +1,12 @@
 import os
 
+REGION_BACKUP_3  = os.environ.get("REGION", "us-central1")
 REGION_BACKUP_2  = os.environ.get("REGION", "europe-west4")
 REGION_BACKUP  = os.environ.get("REGION", "europe-west3")
 REGION  = os.environ.get("REGION", "europe-west1")
 
-REGIONS = [REGION, REGION_BACKUP, REGION_BACKUP_2]
+REGIONS = [REGION, REGION_BACKUP, REGION_BACKUP_2, REGION_BACKUP_3]
+print(f"Fail-over regions:  {REGIONS}")
 
 PROJECT_ID= os.environ.get("PROJECT_ID", "")
 OUTPUT_BUCKET  = os.environ.get("OUTPUT_BUCKET", "")
@@ -27,4 +29,6 @@ TAG_TO_ANALYZE = "CSA"
 
 VIDEO_SHOT_MIN_DURATION = os.environ.get("VIDEO_SHOT_MIN_DURATION", 5)
 
-MODEL_MULTIMODAL = os.environ.get("MODEL_MULTIMODAL", "gemini-1.0-pro-vision-001")
+MODEL_MULTIMODAL = os.environ.get("MODEL_MULTIMODAL", #"gemini-1.5-pro-preview-0409"
+                                   "gemini-1.0-pro-vision-001"
+                                  )

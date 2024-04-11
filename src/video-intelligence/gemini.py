@@ -116,7 +116,7 @@ Rating for sexual explicit content, gore intense."""
                     [prompt, video_input],
                     generation_config={
                         "max_output_tokens": 2048,
-                        "temperature": 0.,
+                        "temperature": 0,
                         "top_p": 1,
                         "top_k": 40
                     },
@@ -144,11 +144,12 @@ Rating for sexual explicit content, gore intense."""
                 str_json = CleanJsonOutput(str_json)
                 if str_json == "ERROR":
                     isRetryAble = True
+                    sleep(30)
                 else:
                     return str_json
 
             except Exception as e:
-                errorMessage = f"{e}"
+                errorMessage = f"{e}"                
                 print(f"ERROR in content_moderation_gemini(data) = {video_input} - location = {location} - ERROR: {errorMessage}")
                 
                 if ("RESOURCE_EXHAUSTED" in f"{e}") or ("Quota exceeded" in f"{e}"):
